@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { spawn, ChildProcess } = require('child_process')
+const { spawn } = require('child_process')
 
 const createWindow = () => {
   const win = new BrowserWindow({
