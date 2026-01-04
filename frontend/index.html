@@ -5,9 +5,21 @@
   </head>
 
   <body>
-    <p>test</p>
-    <button id="myButton">Click me</button>
+    <div>
+      <input type="text" id="tickerInput" placeholder="Enter Stock Ticker" />
+      <button id="getStock">Enter</button>
+      <div id="stockData">
+        <p id="name"></p>
+        <p id="ticker"></p>
+        <p id="buyPrice"></p>
+        <p id="sellPrice"></p>
+
+        <canvas id="priceChart"></canvas>
+      </div>
+
+    </div>
   </body>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js"></script>
 </html>
