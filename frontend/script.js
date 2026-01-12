@@ -1,4 +1,6 @@
 const btn = document.getElementById('getStock')
+
+let priceChart = null;
 btn.addEventListener('click', async () => {
     const ticker = document.getElementById('tickerInput').value;
     const response = await fetch(`http://localhost:8000/stock?ticker=${ticker}`);
@@ -12,7 +14,11 @@ btn.addEventListener('click', async () => {
 
 
     const ctx = document.getElementById('priceChart').getContext('2d');
-    const priceChart = new Chart(ctx, {
+    if (priceChart) {
+        priceChart.destroy();
+    }
+
+    priceChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: data.dates,
