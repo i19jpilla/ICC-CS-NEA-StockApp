@@ -1,11 +1,13 @@
 from fastapi import FastAPI, HTTPException
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import webview
 import time
+
+from backend.routes import setup_routes
 
 app = FastAPI()
 app.add_middleware(
@@ -16,29 +18,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/pages", StaticFiles(directory="frontend/pages", html=True), name="pages")
+app.mount("/shared", StaticFiles(directory="frontend/shared"), name="shared")
+app.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
+
+setup_routes(app)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-        
+    return RedirectResponse(url="/dashboard")
 
-@app.get("/stock")
-async def get_stock_data(ticker):
-    stock = yf.Ticker(ticker)
-    hist = stock.history(period="5d")
-    
-    stock_history = hist.reset_index()
-    print("Stock history retrieved:", ticker)
-    return {
-        "ticker": ticker,
-        "buy_price": hist['Close'].iloc[-1],
-        "sell_price": hist['Close'].iloc[-1] * 0.95,
-        "name": stock.info['shortName'],
-        "dates": stock_history['Date'].dt.strftime('%Y-%m-%d').tolist(),
-        "prices": stock_history['Close'].tolist()
-    }
+@app.get("/login")
+async def get_login_page():
+    return FileResponse("frontend/pages/login/index.html")
+
+@app.get("/dashboard")
+async def get_dashboard_page():
+    return FileResponse("frontend/pages/dashboard/index.html")
 
 def start_server():
     import uvicorn

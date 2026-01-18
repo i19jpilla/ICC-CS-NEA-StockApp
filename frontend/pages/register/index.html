@@ -1,0 +1,22 @@
+<html>
+<head>
+    <title>Register Page</title>
+    <link rel="stylesheet" type="text/css" href="/shared/styles.css">
+</head>
+<body>
+    <div class="register-container">
+        <h2>Create Account</h2>
+        <form id="register-form" action="/register" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            
+            <button type="submit">Register</button>
+        </form>
+    </div>
+</body>
+
+<script src="/pages/register/index.js"></script>
+</html>
