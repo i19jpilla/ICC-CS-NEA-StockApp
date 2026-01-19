@@ -21,4 +21,32 @@ def setup_routes(app):
     async def register_page(
         data: dict
     ):
-        return await services.auth.register(data["username"], data["password"])  
+        return await services.auth.register(data["username"], data["password"])
+    
+    @app.post("/api/auth/logout")
+    async def logout_page(
+        data: dict
+    ):
+        return await services.auth.logout(data["token"])
+    
+    @app.post("/api/stocks/buy")
+    async def buy_stock(
+        data: dict
+    ):
+        session = services.auth.get_session(data["token"])
+        if session:
+            data = await session.buy_stock(data["symbol"], data["quantity"])
+            return {"status": "success", "message": "Stock purchased successfully", "data": data}
+        else:
+            return {"status": "failure", "message": "Invalid session token"}
+        
+    @app.post("/api/stocks/sell")
+    async def sell_stock(
+        data: dict
+    ):
+        session = services.auth.get_session(data["token"])
+        if session:
+            data = await session.sell_stock(data["symbol"], data["quantity"])
+            return {"status": "success", "message": "Stock sold successfully", "data": data}
+        else:
+            return {"status": "failure", "message": "Invalid session token"}

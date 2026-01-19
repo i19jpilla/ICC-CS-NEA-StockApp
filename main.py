@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -7,6 +8,8 @@ import yfinance as yf
 import webview
 import time
 
+from backend import services
+from backend.database.connection import db
 from backend.routes import setup_routes
 
 app = FastAPI()
@@ -22,11 +25,19 @@ app.mount("/pages", StaticFiles(directory="frontend/pages", html=True), name="pa
 app.mount("/shared", StaticFiles(directory="frontend/shared"), name="shared")
 app.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
 
-setup_routes(app)
 
+@app.on_event("startup")
+async def startup_event():
+    await db.connect()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await db.disconnect()
+
+setup_routes(app)
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse(url="/login")
 
 @app.get("/login")
 async def get_login_page():
