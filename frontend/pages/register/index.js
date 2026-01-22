@@ -3,6 +3,7 @@ registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
     try {
         const response = await fetch('/api/auth/register', {
             method: 'POST',
@@ -11,7 +12,8 @@ registerForm.addEventListener('submit', async (e) => {
             },
             body: JSON.stringify({ 
                 username: username,
-                password: password
+                password: password,
+                email: email
             })
         })
 

@@ -21,7 +21,7 @@ def setup_routes(app):
     async def register_page(
         data: dict
     ):
-        return await services.auth.register(data["username"], data["password"])
+        return await services.auth.register(data["username"], data["password"], data["email"])
     
     @app.post("/api/auth/logout")
     async def logout_page(

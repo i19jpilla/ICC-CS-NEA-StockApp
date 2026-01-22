@@ -15,11 +15,17 @@ class User:
             "id": self.id
         }
     
+    async def init_tables(self):
+        cursor = await db.connection.cursor()
+        await cursor.execute("INSERT OR IGNORE INTO profile (user_id, balance) VALUES (?, ?)", (self.id, 0.0))
+        await db.connection.commit()
+    
     async def get_balance(self):
         # Placeholder for balance retrieval logic
         cursor = await db.connection.cursor()
         await cursor.execute("SELECT balance FROM profile WHERE user_id = ?", (self.id,))
         result = await cursor.fetchone()
+        print("Fetched balance from DB:", result)
         return result[0] if result else 0.0  # Return 0 if no balance found
     
     async def update_balance(self, amount: float):
@@ -32,7 +38,7 @@ class User:
         cursor = await db.connection.cursor()
         await cursor.execute("SELECT symbol, quantity FROM portfolio WHERE user_id = ?", (self.id,))
         results = await cursor.fetchall()
-
+        print("Fetched portfolio from DB:", results)
         portfolio = {}
         for row in results:
             print("Portfolio item:", row)
@@ -68,7 +74,7 @@ class UserSession:
         }
     
     async def buy_stock(self, symbol: str, quantity: int):
-        await services.stock.buy_stock(self.user, symbol=symbol, quantity=quantity)
+        await services.stock.buy_stock(user=self.user, symbol=symbol, quantity=quantity)
 
     async def sell_stock(self, symbol: str, quantity: int):
-        await services.stock.sell_stock(self.user, symbol=symbol, quantity=quantity)
+        await services.stock.sell_stock(user=self.user, symbol=symbol, quantity=quantity)

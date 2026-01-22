@@ -22,5 +22,6 @@ class Cache:
         self._cache[key] = CacheItem(data, expiration)
 
     def has(self, key: str) -> bool:
+        print("Checking cache for key:", key)
         item = self._cache.get(key)
         return item is not None and item.expiration > time()

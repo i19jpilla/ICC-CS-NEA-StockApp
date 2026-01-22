@@ -10,43 +10,41 @@ class AuthService:
     def _cleanup_sessions(self):
         current_time = time()
         tokens_to_remove = []
-        for token, session in self._user_sessions.items():
+        for user_id, session in self._user_sessions.items():
             if session.expiration <= current_time:
-                tokens_to_remove.append(token)
+                tokens_to_remove.append(user_id)
 
-        for token in tokens_to_remove:
-            del self._user_sessions[token]
+        for user_id in tokens_to_remove:
+            del self._user_sessions[user_id]
 
     async def login(self, username, password):
-        cursor = await db.connection.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        password_hash = password  # In real applications, hash the password!
+        cursor = await db.connection.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", (username, password_hash))
         userdata = await cursor.fetchone()
         if userdata:
-            user_id = userdata[0]
-            if self._user_sessions.has(user_id):
-                session = self._user_sessions.get(user_id)
-                return {
-                    "status": "success",
-                    "message": "Already logged in",
-                    "token": session.token,
-                    "username": username
-                }
-            else:
-                user = User(
-                    id=userdata[0],
-                    username=userdata[1],
-                    email=userdata[3]
-                )
+            user = User(
+                id=userdata[0],
+                username=userdata[1],
+                email=userdata[3]
+            )
 
-                token = self._generate_token(username)
-                session = UserSession(user, token)
-                self._user_sessions.set(token, session, expiration=3600)
+            token = self._generate_token(username)
+            session = UserSession(user, token)
+            self._user_sessions[token] = session
 
-                return {
-                    "status": "success",
-                    "message": "Login successful",
-                    "token": token,
-                    "username": username
-                }
+            #init stats
+            await session.user.update_balance(1000.0)
+            await session.user.add_to_portfolio("AAPL", 10)
+
+            print(await session.user.get_balance())
+            print(await session.user.get_portfolio())
+
+            return {
+                "status": "success",
+                "message": "Login successful",
+                "token": token,
+                "username": username,
+            }
         else:
             return {"status": "failure", "message": "Invalid username or password"}
         
@@ -57,17 +55,18 @@ class AuthService:
         else:
             return {"status": "failure", "message": "Invalid session token"}
 
-    async def register(self, username, password):
-        cursor = await db.connection.execute("SELECT * FROM users WHERE username = ?", (username,))
+    async def register(self, username, password, email):
+        cursor = await db.connection.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, email))
         existing_user = await cursor.fetchone()
         if existing_user:
-            return {"status": "failure", "message": "Username already exists"}
+            return {"status": "failure", "message": "Username or email already exists"}
         else:
-            await db.connection.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            password_hash = password  # In real applications, hash the password!
+            await db.connection.execute("INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)", (username, password_hash, email))
             return {"status": "success", "message": "Registration successful"}
         
-    def get_session(self, token: str) -> UserSession:
-        return self._user_sessions.get(token)
+    def get_session(self, token) -> UserSession:
+        return self._user_sessions[token]
 
     def _generate_token(self, username):
         # Dummy token generation logic

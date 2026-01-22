@@ -26,7 +26,7 @@ class Database:
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL
-        );
+        )
         """)
 
         """Create profile table"""
@@ -36,7 +36,7 @@ class Database:
             user_id INTEGER UNIQUE NOT NULL,
             balance REAL DEFAULT 0.0,
             FOREIGN KEY (user_id) REFERENCES users(id)
-        );
+        )
         """)
 
         """Create portfolio table"""
@@ -46,8 +46,8 @@ class Database:
             user_id INTEGER NOT NULL,
             symbol TEXT NOT NULL,
             quantity INTEGER NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-        );
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
         """)
 
         await self.connection.commit()

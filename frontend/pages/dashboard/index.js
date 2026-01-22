@@ -52,6 +52,12 @@ buyButton.addEventListener('click', async () => {
     }
 
     const quantity = 1; // For simplicity, buying 1 share
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('You must be logged in to buy stocks.');
+        window.location.href = '/login';
+        return;
+    }
 
     const response = await fetch('/api/stocks/buy', {
         method: 'POST',
@@ -59,13 +65,14 @@ buyButton.addEventListener('click', async () => {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            symbol: ticker,
-            quantity: quantity
+            symbol: currentTicker,
+            quantity: quantity,
+            token: token
         })
     });
     const data = await response.json();
     if (response.ok) {
-        alert(`Successfully bought ${quantity} share(s) of ${ticker}`);
+        alert(`Successfully bought ${quantity} share(s) of ${currentTicker}`);
         document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
         document.getElementById('totalQuantity').innerText = `Total Quantity: ${quantity}`;
     } else {
@@ -81,19 +88,27 @@ sellButton.addEventListener('click', async () => {
     }
 
     const quantity = 1; // For simplicity, selling 1 share
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('You must be logged in to buy stocks.');
+        window.location.href = '/login';
+        return;
+    }
+
     const response = await fetch('/api/stocks/sell', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            symbol: ticker,
-            quantity: quantity
+            symbol: currentTicker,
+            quantity: quantity,
+            token: token
         })
     });
     const data = await response.json();
     if (response.ok) {
-        alert(`Successfully sold ${quantity} share(s) of ${ticker}`);
+        alert(`Successfully sold ${quantity} share(s) of ${currentTicker}`);
         document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
         document.getElementById('totalQuantity').innerText = `Total Quantity: ${quantity}`;
     } else {
