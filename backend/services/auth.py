@@ -5,17 +5,17 @@ from backend.models.cache import Cache
 
 class AuthService:
     def __init__(self):
-        self._user_sessions: dict[str, UserSession] = {}
+        self._sessions: dict[str, UserSession] = {}
 
     def _cleanup_sessions(self):
         current_time = time()
         tokens_to_remove = []
-        for user_id, session in self._user_sessions.items():
+        for user_id, session in self._sessions.items():
             if session.expiration <= current_time:
                 tokens_to_remove.append(user_id)
 
         for user_id in tokens_to_remove:
-            del self._user_sessions[user_id]
+            del self._sessions[user_id]
 
     async def login(self, username, password):
         password_hash = password  # In real applications, hash the password!
@@ -28,9 +28,9 @@ class AuthService:
                 email=userdata[3]
             )
 
-            token = self._generate_token(username)
+            token = self._generate_token(username, userdata[0])
             session = UserSession(user, token)
-            self._user_sessions[token] = session
+            self._sessions[token] = session
 
             #init stats
             await session.user.update_balance(1000.0)
@@ -49,8 +49,8 @@ class AuthService:
             return {"status": "failure", "message": "Invalid username or password"}
         
     async def logout(self, token: str):
-        if token in self._user_sessions:
-            del self._user_sessions[token]
+        if token in self._sessions:
+            del self._sessions[token]
             return {"status": "success", "message": "Logout successful"}
         else:
             return {"status": "failure", "message": "Invalid session token"}
@@ -61,13 +61,21 @@ class AuthService:
         if existing_user:
             return {"status": "failure", "message": "Username or email already exists"}
         else:
-            password_hash = password  # In real applications, hash the password!
+            password_hash = password  # should hash the password
             await db.connection.execute("INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)", (username, password_hash, email))
             return {"status": "success", "message": "Registration successful"}
-        
-    def get_session(self, token) -> UserSession:
-        return self._user_sessions[token]
 
-    def _generate_token(self, username):
+    def create_session(self, user_id):
+        session = self.get_session(user_id)
+        if session: return session
+
+        session = UserSession(user_id)
+        self._sessions[user_id] = session
+        return session
+        
+    def get_session(self, user_id) -> UserSession:
+        return self._sessions[user_id]
+
+    def _generate_token(self, username,user_id):
         # Dummy token generation logic
-        return f"token_for_{username}"
+        return f"token_for_{username}_{user_id}"

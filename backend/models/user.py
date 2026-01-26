@@ -2,28 +2,56 @@ from time import time
 from backend import services
 from backend.database.connection import db
 
-class User:
-    def __init__(self, id, username, email):
-        self.username = username
-        self.email = email
-        self.id = id  # This would typically be set by the database
+from dataclass import dataclass
 
-    def get_profile(self):
-        return {
-            "username": self.username,
-            "email": self.email,
-            "id": self.id
-        }
+@dataclass
+class User:
+    user_id: str
+    username: str
+    email: str
+    #password: str   should not store password locally
+
+class Profile:
+    user_id: str
+    balance: int
+    portfolio: dict[str, int]
+
+class User:
+    def __init__(self, user_id, username, email):
+        self.id = user_id
+        self.user = self._load_user()
+        self.profile = self._load_profile()
+        self.dirty = False
     
-    async def init_tables(self):
-        cursor = await db.connection.cursor()
-        await cursor.execute("INSERT OR IGNORE INTO profile (user_id, balance) VALUES (?, ?)", (self.id, 0.0))
-        await db.connection.commit()
+     def _load_profile(self):
+        cursor = db.connection.cursor()
+        cursor.execute("SELECT * FROM profile WHERE user_id = ?", (self.id))
+        profile_data = cursor.fetchone()
+        print("Profile loaded", profile_data)
+
+        if profile_data: 
+            return Profile(
+                user_id = self.id,
+                balance = profile_data["balance"],
+                portfolio = profile_data["portfolio"] or {} #need a separate portfolio table
+            )
+        else:
+            return {}
+
+    async def _save(self):
+        if not self.dirty: return
+
     
+    
+
+class UserSession:
+    def __init__(self, user: User):
+        self.user = user
+
     async def get_balance(self):
         # Placeholder for balance retrieval logic
         cursor = await db.connection.cursor()
-        await cursor.execute("SELECT balance FROM profile WHERE user_id = ?", (self.id,))
+        await cursor.execute("SELECT balance FROM profile WHERE user_id = ?", (self.user.id,))
         result = await cursor.fetchone()
         print("Fetched balance from DB:", result)
         return result[0] if result else 0.0  # Return 0 if no balance found
@@ -59,19 +87,6 @@ class User:
                              (portfolio[symbol], self.id, symbol))
         await db.connection.commit()
         return portfolio
-
-class UserSession:
-    def __init__(self, user: User, token: str, expiration: int = 3600):
-        self.user = user
-        self.token = token
-        self.expiration = time() + expiration
-
-    def get_session_info(self):
-        return {
-            "user": self.user.get_profile(),
-            "token": self.token,
-            "expiration": self.expiration
-        }
     
     async def buy_stock(self, symbol: str, quantity: int):
         await services.stock.buy_stock(user=self.user, symbol=symbol, quantity=quantity)

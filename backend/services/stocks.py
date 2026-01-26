@@ -36,7 +36,7 @@ class StockService:
         data = await self.get_stock_info(symbol)
         return data["sell_price"]
 
-    async def buy_stock(self, user: User, symbol: str, quantity: int):
+    async def buy_stock(self, user_id: str, symbol: str, quantity: int):
         buy_price = await self.get_buy_price(symbol)
         total_cost = buy_price * quantity
 
