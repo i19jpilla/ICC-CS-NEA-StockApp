@@ -2,7 +2,7 @@ from time import time
 from backend import services
 from backend.database.connection import db
 
-from dataclass import dataclass
+from backend.utils.timer import RepeatedTimer
 
 
 class User:
@@ -33,9 +33,13 @@ class Profile:
         self.dirty = True
 
 class UserSession:
-    def __init__(self, user: User):
+    def __init__(self, user_id: str, user: User):
         self.user = user
         self.profile = self._load_profile(user)
+
+        def timer_func():
+
+        self._timer = RepeatedTimer(60, )
 
     def _load_profile(self):
         cursor = db.connection.cursor()

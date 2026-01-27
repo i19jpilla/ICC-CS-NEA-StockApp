@@ -28,6 +28,12 @@ def setup_routes(app):
         data: dict
     ):
         return await services.auth.logout(data["token"])
+
+    @app.post("/test/addcash")
+    async def test_add_cash(
+        data: dict
+    ):
+        session = services.auth.get_session(data["token"])
     
     @app.post("/api/stocks/buy")
     async def buy_stock(

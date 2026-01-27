@@ -6,6 +6,7 @@ from backend.models.cache import Cache
 class AuthService:
     def __init__(self):
         self._sessions: dict[str, UserSession] = {}
+        self._token_dict: dict[str, str] = {}
 
     def _cleanup_sessions(self):
         current_time = time()
@@ -22,15 +23,15 @@ class AuthService:
         cursor = await db.connection.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", (username, password_hash))
         userdata = await cursor.fetchone()
         if userdata:
+            user_id = userdata[0]
             user = User(
-                id=userdata[0],
+                id=user_id,
                 username=userdata[1],
                 email=userdata[3]
             )
 
-            token = self._generate_token(username, userdata[0])
-            session = UserSession(user, token)
-            self._sessions[token] = session
+            token = self._generate_token(username, user_id)
+            session = self.create_session(user, token)
 
             #init stats
             await session.user.update_balance(1000.0)
@@ -50,7 +51,8 @@ class AuthService:
         
     async def logout(self, token: str):
         if token in self._sessions:
-            del self._sessions[token]
+            session = self._sessions[token]
+            del self._token_dict[session.id]
             return {"status": "success", "message": "Logout successful"}
         else:
             return {"status": "failure", "message": "Invalid session token"}
@@ -65,16 +67,18 @@ class AuthService:
             await db.connection.execute("INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)", (username, password_hash, email))
             return {"status": "success", "message": "Registration successful"}
 
-    def create_session(self, user_id):
-        session = self.get_session(user_id)
+    def create_session(self, user, token):
+        session = self.get_session(token)
         if session: return session
 
-        session = UserSession(user_id)
+        session = UserSession(user)
+        self._token_dict[token] = user_id
         self._sessions[user_id] = session
         return session
         
-    def get_session(self, user_id) -> UserSession:
-        return self._sessions[user_id]
+    def get_session(self, token) -> UserSession:
+        user_id = self.token_dict[token]
+        if user_id: return self._sessions[user_id]
 
     def _generate_token(self, username,user_id):
         # Dummy token generation logic
