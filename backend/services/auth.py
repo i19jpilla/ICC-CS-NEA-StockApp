@@ -25,20 +25,18 @@ class AuthService:
         if userdata:
             user_id = userdata[0]
             user = User(
-                id=user_id,
+                user_id=user_id,
                 username=userdata[1],
                 email=userdata[3]
             )
 
             token = self._generate_token(username, user_id)
             session = self.create_session(user, token)
+            await session.start()
 
             #init stats
-            await session.user.update_balance(1000.0)
-            await session.user.add_to_portfolio("AAPL", 10)
-
-            print(await session.user.get_balance())
-            print(await session.user.get_portfolio())
+            print(session.profile.balance)
+            print(session.portfolio.holdings)
 
             return {
                 "status": "success",
@@ -50,9 +48,12 @@ class AuthService:
             return {"status": "failure", "message": "Invalid username or password"}
         
     async def logout(self, token: str):
-        if token in self._sessions:
-            session = self._sessions[token]
-            del self._token_dict[session.id]
+        if token in self._token_dict:
+            user_id = self._token_dict[token]
+            session = self._sessions[user_id]
+            await session.stop()
+            del self._token_dict[user_id]
+            del self._sessions[user_id]
             return {"status": "success", "message": "Logout successful"}
         else:
             return {"status": "failure", "message": "Invalid session token"}
@@ -72,13 +73,14 @@ class AuthService:
         if session: return session
 
         session = UserSession(user)
-        self._token_dict[token] = user_id
-        self._sessions[user_id] = session
+        self._token_dict[token] = session.user.user_id
+        self._sessions[session.user.user_id] = session
         return session
         
     def get_session(self, token) -> UserSession:
-        user_id = self.token_dict[token]
-        if user_id: return self._sessions[user_id]
+        if token in self._token_dict:
+            user_id = self._token_dict[token]
+            return self._sessions.get(user_id)
 
     def _generate_token(self, username,user_id):
         # Dummy token generation logic

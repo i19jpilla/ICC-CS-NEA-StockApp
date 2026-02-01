@@ -42,7 +42,36 @@ btn.addEventListener('click', async () => {
             }
         }
     });
-})
+});
+
+const addCashButton = document.getElementById('addCash');
+addCashButton.addEventListener('click', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('You must be logged in to add cash.');
+        window.location.href = '/login';
+        return;
+    }
+
+    const response = await fetch('/test/add_cash', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            token: token,
+            amount: 100
+        })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+        alert(`Successfully added cash. New balance: $${data.new_balance.toFixed(2)}`);
+        document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
+    } else {
+        alert(`Failed to add cash: ${data.detail}`);
+    }
+});
 
 const buyButton = document.getElementById('buyButton');
 buyButton.addEventListener('click', async () => {
@@ -70,6 +99,7 @@ buyButton.addEventListener('click', async () => {
             token: token
         })
     });
+
     const data = await response.json();
     if (response.ok) {
         alert(`Successfully bought ${quantity} share(s) of ${currentTicker}`);

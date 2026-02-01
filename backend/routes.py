@@ -1,6 +1,5 @@
 from fastapi.responses import HTMLResponse, RedirectResponse
 from backend import services
-from backend.models.auth import LoginRequest, RegisterRequest
 
 
 def setup_routes(app):
@@ -29,11 +28,17 @@ def setup_routes(app):
     ):
         return await services.auth.logout(data["token"])
 
-    @app.post("/test/addcash")
+    @app.post("/test/add_cash")
     async def test_add_cash(
         data: dict
     ):
         session = services.auth.get_session(data["token"])
+        if session:
+            amount = data["amount"] or 100
+            new_balance = session.update_balance(amount)
+            return {"status": "success", "message": "Cash added successfully", "new_balance": new_balance}
+        else:
+            return {"status": "failure", "message": "Invalid session token"}
     
     @app.post("/api/stocks/buy")
     async def buy_stock(

@@ -1,3 +1,4 @@
+import asyncio
 from time import time
 from backend import services
 from backend.database.connection import db
@@ -21,70 +22,132 @@ class Profile:
     balance: int
     portfolio: dict[str, int]
 
-    def __init__(self, user_id, balance, portfolio):
+    def __init__(self, user_id, balance):
         self.user_id = user_id
         self.balance = balance
-        self.portfolio = portfolio #change to portfolio class
-
         self.dirty = False
 
     def set_balance(self, amount):
         self.balance = amount
         self.dirty = True
 
+class Portfolio:
+    def __init__(self, user_id, portfolio_data=None):
+        self.user_id = user_id
+        self.holdings: dict[str, int] = {}
+        if portfolio_data:
+            self.holdings = self._convert_to_dict(portfolio_data)
+
+        self.dirty = False
+
+    def _convert_to_dict(self, portfolio_data):
+        holdings = {}
+        for item in portfolio_data:
+            holdings[item["symbol"]] = item["quantity"]
+        return holdings
+    
+    def add_stock(self, symbol: str, quantity: int):
+        if symbol not in self.holdings:
+            self.holdings[symbol] = 0
+        self.holdings[symbol] += quantity
+        self.dirty = True
+    
+    def remove_stock(self, symbol: str, quantity: int):
+        if symbol in self.holdings and self.holdings[symbol] >= quantity:
+            self.holdings[symbol] -= quantity
+            self.dirty = True
+            return True
+        return False
+
 class UserSession:
-    def __init__(self, user_id: str, user: User):
+    def __init__(self, user: User):
         self.user = user
-        self.profile = self._load_profile(user)
 
-        def timer_func():
+    async def start(self):
+        self.profile = await self._load_profile()
+        self.portfolio = await self._load_portfolio()
+        self.save_loop = asyncio.create_task(self._save_loop())
 
-        self._timer = RepeatedTimer(60, )
+    async def stop(self):
+        self.save_loop.cancel()
+        await self._save()
 
-    def _load_profile(self):
-        cursor = db.connection.cursor()
-        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (self.user.id))
-        profile_data = cursor.fetchone()
+    async def _save_loop(self):
+        while True:
+            await asyncio.sleep(60)
+            await self._save()
+
+    async def _load_profile(self):
+        if not self.user: return None
+        cursor = await db.connection.cursor()
+        user_id = int(self.user.user_id)
+        print(user_id)
+        await cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,))
+        profile_data = await cursor.fetchone()
         print("Profile loaded", profile_data)
 
         if profile_data: 
             return Profile(
-                user_id = self.user.id,
+                user_id = profile_data["user_id"],
                 balance = profile_data["balance"],
-                portfolio = profile_data["portfolio"] or {} #need a separate portfolio table
             )
         else:
-            return {}
+            return Profile(
+                user_id = self.user.user_id,
+                balance = 0
+            )
+        
+    async def _load_portfolio(self):
+        if not self.user: return None
+        cursor = await db.connection.cursor()
+        user_id = int(self.user.user_id)
+        print(user_id)
+        await cursor.execute("SELECT * FROM portfolios WHERE user_id = ?", (user_id,))
+        results = await cursor.fetchall()
+        print("Portfolio loaded", results)
+
+        portfolio = Portfolio(
+            user_id = self.user.user_id,
+            portfolio_data=results
+        )
+        return portfolio
 
     async def _save(self):
-        if not self.dirty: return
-
-        cursor = await db.connection.cursor()
-        await cursor.execute("""
-            UPDATE profiles SET
-            balance = ?
-            WHERE user_id = ?
-        """, (self.profile.balance, self.user.id))
-        await db.connection.commit()
-
-        self.dirty = False
+        print("Saving profile for user:", self.user.username)
+        if self.profile and self.profile.dirty:
+            cursor = await db.connection.cursor()
+            await cursor.execute("""
+                UPDATE profiles SET
+                balance = ?
+                WHERE user_id = ?
+            """, (self.profile.balance, self.user.id))
+            await db.connection.commit()
+            self.profile.dirty = False
 
     def get_balance(self):
         return self.profile.balance or 0
     
     def update_balance(self, fn):
-        balance = self.get_balance()
-        balance = fn(balance)
-        self.profile.set_balance(balance)
-
+        #check if fn is a number
+        if isinstance(fn, (int, float)):
+            balance = self.get_balance() + fn
+            self.profile.set_balance(balance)
+            return balance
+        elif callable(fn):
+            balance = self.get_balance()
+            balance = fn(balance)
+            self.profile.set_balance(balance)
+            return balance
+        
     def get_portfolio(self):
         return self.profile.portfolio or {
             "AAPL": 10
         }
 
+    """
     async def get_portfolio(self):
         cursor = await db.connection.cursor()
-        await cursor.execute("SELECT symbol, quantity FROM portfolios WHERE user_id = ?", (self.id,))
+        await cursor.execute("SELECT symbol, quantity FROM portfolios WHERE user_id = ?", (self.user.id,))
         results = await cursor.fetchall()
         print("Fetched portfolio from DB:", results)
         portfolio = {}
@@ -94,14 +157,10 @@ class UserSession:
             portfolio[symbol] = quantity
 
         return portfolio
-    
-    async def add_to_portfolio(self, symbol: str, quantity: int):
-        portfolio = self.get_portfolio()
-        if not portfolio[symbol]: portfolio[symbol] = 0
-        portfolio[symbol] += quantity
+    """
     
     async def buy_stock(self, symbol: str, quantity: int):
-        await services.stock.buy_stock(user=self.user, symbol=symbol, quantity=quantity)
+        await services.stock.buy_stock(self, symbol=symbol, quantity=quantity)
 
     async def sell_stock(self, symbol: str, quantity: int):
-        await services.stock.sell_stock(user=self.user, symbol=symbol, quantity=quantity)
+        await services.stock.sell_stock(self, symbol=symbol, quantity=quantity)

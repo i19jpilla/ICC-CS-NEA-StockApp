@@ -31,7 +31,7 @@ class Database:
 
         """Create profile table"""
         await self.connection.execute("""
-        CREATE TABLE IF NOT EXISTS profile (
+        CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE NOT NULL,
             balance REAL DEFAULT 0.0,
@@ -41,7 +41,7 @@ class Database:
 
         """Create portfolio table"""
         await self.connection.execute("""
-        CREATE TABLE IF NOT EXISTS portfolio (
+        CREATE TABLE IF NOT EXISTS portfolios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             symbol TEXT NOT NULL,

@@ -1,7 +1,7 @@
 from time import time
 import yfinance as yf
 from backend.models.cache import *
-from backend.models.user import User
+from backend.models.user import User, UserSession
 
 
 class StockService:
@@ -36,37 +36,35 @@ class StockService:
         data = await self.get_stock_info(symbol)
         return data["sell_price"]
 
-    async def buy_stock(self, user_id: str, symbol: str, quantity: int):
+    async def buy_stock(self, session: UserSession, symbol: str, quantity: int):
         buy_price = await self.get_buy_price(symbol)
         total_cost = buy_price * quantity
 
-        user_balance = await user.get_balance()
+        user_balance = session.profile.balance
         if user_balance < total_cost:
             raise Exception("Insufficient funds to complete purchase.")
-        user_balance = await user.update_balance(-total_cost)
+        session.update_balance(lambda balance: balance - total_cost)
 
-        portfolio = await user.add_to_portfolio(symbol, quantity)
-        curr_quantity = portfolio[symbol]
+        session.portfolio.add_stock(symbol, quantity)
+        curr_quantity = session.portfolio.holdings.get(symbol, 0)
 
         # Here you would add logic to deduct funds from the user's account
-        print(f"User {user.username} bought {quantity} shares of ${symbol} at {buy_price} each for a total of {total_cost}.")
+        print(f"User {session.user.username} bought {quantity} shares of ${symbol} at {buy_price} each for a total of {total_cost}.")
         return {
             "total_stock": curr_quantity,
             "balance": user_balance
         }
 
-    async def sell_stock(self, user: User, symbol: str, quantity: int):
+    async def sell_stock(self, session: UserSession, symbol: str, quantity: int):
         sell_price = await self.get_sell_price(symbol)
         total_revenue = sell_price * quantity
         # Here you would add logic to add funds to the user's account
-        portfolio = await user.get_portfolio()
-        if symbol not in portfolio or portfolio[symbol] < quantity:
-            raise Exception("Insufficient stock quantity to complete sale.")
-        portfolio = await user.add_to_portfolio(symbol, -quantity)
-        curr_quantity = portfolio[symbol]
-
-        user_balance = await user.update_balance(total_revenue)
-        print(f"User {user.username} sold {quantity} shares of ${symbol} at {sell_price} each for a total of {total_revenue}.")
+        session.update_balance(lambda balance: balance + total_revenue)
+        session.portfolio.remove_stock(symbol, quantity)
+        curr_quantity = session.portfolio.holdings.get(symbol, 0)
+        
+        user_balance = session.get_balance()
+        print(f"User {session.user.username} sold {quantity} shares of ${symbol} at {sell_price} each for a total of {total_revenue}.")
         return {
             "total_stock": curr_quantity,
             "balance": user_balance
