@@ -31,6 +31,19 @@ class Profile:
         self.balance = amount
         self.dirty = True
 
+    async def save(self, user: User):
+        if not self.dirty: return # No changes to save
+        print("Saving profile to DB for user:", user.username)
+        cursor = await db.connection.cursor()
+        await cursor.execute("""
+            UPDATE profiles SET
+            balance = ?
+            WHERE user_id = ?
+        """, (self.balance, self.user_id))
+        await db.connection.commit()
+        self.dirty = False
+        
+
 class Portfolio:
     def __init__(self, user_id, portfolio_data=None):
         self.user_id = user_id
@@ -58,6 +71,18 @@ class Portfolio:
             self.dirty = True
             return True
         return False
+    
+    async def save(self, user: User):
+        if not self.dirty: return # No changes to save
+        print("Saving portfolio to DB for user:", user.username)
+        cursor = await db.connection.cursor()
+        for symbol, quantity in self.holdings.items():
+            await cursor.execute("""
+                UPDATE portfolios SET quantity = ?
+                WHERE user_id = ? AND symbol = ?
+            """, (quantity, self.user_id, symbol))
+        await db.connection.commit()
+        self.dirty = False
 
 class UserSession:
     def __init__(self, user: User):
@@ -76,6 +101,11 @@ class UserSession:
         while True:
             await asyncio.sleep(60)
             await self._save()
+
+    async def _save(self):
+        print("Saving profile for user:", self.user.username)
+        self.profile.save(self.user)
+        self.portfolio.save(self.user)
 
     async def _load_profile(self):
         if not self.user: return None
@@ -111,18 +141,6 @@ class UserSession:
             portfolio_data=results
         )
         return portfolio
-
-    async def _save(self):
-        print("Saving profile for user:", self.user.username)
-        if self.profile and self.profile.dirty:
-            cursor = await db.connection.cursor()
-            await cursor.execute("""
-                UPDATE profiles SET
-                balance = ?
-                WHERE user_id = ?
-            """, (self.profile.balance, self.user.id))
-            await db.connection.commit()
-            self.profile.dirty = False
 
     def get_balance(self):
         return self.profile.balance or 0
