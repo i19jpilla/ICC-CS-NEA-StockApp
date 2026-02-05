@@ -1,5 +1,9 @@
+import asyncio
 from dataclasses import dataclass
 from datetime import time
+import datetime
+
+from backend.models.user import UserSession
 
 @dataclass
 class StockData:
@@ -12,11 +16,40 @@ class StockData:
 
 class MarketStock:
     def __init__(self, data: StockData):
+        self._data = data
         self.symbol = data.symbol
-        self.price = data.prices[0] if data.prices else 0.0
+        self.history: list = self._generate_price_history(self._data)
+        self.current_price = self._data.buy_price
+
+    def _generate_price_history(self, data: StockData):
+        history = []
+        # Create a dictionary mapping dates to prices for easy access
+        # Must assume that dates and prices are aligned in the same order
+        for i in range(len(data.dates)):
+            history.append({
+                "timestamp": data.dates[i],
+                "price": data.prices[i]
+            })
+        return history
 
     def update_price(self, new_price: float):
-        self.price = new_price
+        self.current_price = new_price
+        timestamp = datetime.now()
+        self.history.append({
+            "timestamp": timestamp,
+            "price": new_price
+        })
+
+    def get_price(self) -> float:
+        return self.current_price or self._data.buy_price
+    
+    def get_data(self) -> StockData:
+        # Return a copy of the original StockData with updated current_price
+        updated_data = self._data
+        updated_data.buy_price = self.current_price
+        updated_data.sell_price = self.current_price  # Assuming sell price is same as buy price for simplicity
+        updated_data.prices = self.history[-len(self._data.prices):]  # Keep the same number of historical prices
+        return updated_data
 
 class StockMarket:
     def __init__(self):
@@ -27,8 +60,51 @@ class StockMarket:
 
     def get_stock(self, symbol: str) -> MarketStock | None:
         return self.stocks.get(symbol)
+    
+    def get_stock_data(self, symbol: str) -> StockData | None:
+        stock = self.get_stock(symbol)
+        return stock.get_data() if stock else None
+    
+    async def buy_stock(self, session: UserSession, symbol: str, quantity: int):
+        stock = self.get_stock(symbol)
+        if not stock:
+            print("Stock not found in market.")
+            return {
+                "success": False,
+                "message": "Stock not found in market."
+            }
+        
+        total_cost = stock.get_price() * quantity
 
-class SimulatedMarket(StockMarket):
+        user_balance = session.profile.balance
+        if user_balance < total_cost:
+            print("Insufficient funds to complete purchase.")
+            return {
+                "success": False,
+                "message": "Insufficient funds to complete purchase."
+            }
+        
+        session.update_balance(lambda balance: balance - total_cost)
+
+        session.portfolio.add_stock(symbol, quantity)
+        curr_quantity = session.portfolio.holdings.get(symbol, 0)
+
+        # Here you would add logic to deduct funds from the user's account
+        print(f"User {session.user.username} bought {quantity} shares of ${symbol} at ${stock.get_price()} each for a total of ${total_cost}.")
+        return {
+            "success": True,
+            "total_stock": curr_quantity,
+            "balance": user_balance
+        }
+    
+    def sell_stock(self, user: UserSession, symbol: str, quantity: int) -> float:
+        stock = self.get_stock(symbol)
+        if not stock:
+            raise Exception("Stock not found in market.")
+        total_revenue = stock.price * quantity
+        return total_revenue
+
+class SandboxMarket(StockMarket):
     def __init__(self):
         super().__init__()
         # Initialize with some simulated stocks
@@ -42,7 +118,7 @@ class SimulatedMarket(StockMarket):
         )))
 
         self.add_stock(MarketStock(StockData(
-            symbol="GOOGL",
+            symbol="GOOG",
             name="Alphabet Inc.",
             buy_price=2800.0,
             sell_price=2750.0,
@@ -50,22 +126,31 @@ class SimulatedMarket(StockMarket):
             prices=[2800.0]
         )))
 
+    def _simulate_market(self):
+        while True:
+            self.step()
+            asyncio.sleep(5)  # Simulate market updates every 5 seconds
+    
     def step(self):
         # Simulate stock price changes
         for stock in self.stocks.values():
             # Simple random walk for demonstration
             import random
             change = random.uniform(-1, 1)
-            new_price = max(0, stock.price + change)
+            new_price = max(0, stock.get_price() + change)
             stock.update_price(new_price)
+        
+        print(self.stocks.items())
 
-    def get_stock_price(self, symbol: str) -> float | None:
-        stock = self.get_stock(symbol)
-        return stock.price if stock else None
-    
-    def buy_stock(self, symbol: str, quantity: int) -> float:
-        stock_price = self.get_stock_price(symbol)
-        if stock_price is None:
-            raise Exception("Stock not found in simulated market.")
-        total_cost = stock_price * quantity
-        return total_cost
+    def start(self):
+        # Simulate market conditions (e.g., price changes, news events)
+        self.main_loop = asyncio.create_task(self._simulate_market())
+
+    def stop(self):
+        self.main_loop.cancel()
+
+    def get_market_stocks(self) -> dict[str, StockData]:
+        stock_data = {}
+        for symbol, stock in self.stocks.items():
+            stock_data[symbol] = stock.get_data()
+        return stock_data

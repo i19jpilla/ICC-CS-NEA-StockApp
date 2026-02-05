@@ -126,6 +126,9 @@ class UserSession:
                 user_id = self.user.user_id,
                 balance = 0
             )
+    
+    async def get_simulated_market(self):
+        return services.stock.get_sandbox(self)
         
     async def _load_portfolio(self):
         if not self.user: return None
@@ -178,7 +181,7 @@ class UserSession:
     """
     
     async def buy_stock(self, symbol: str, quantity: int):
-        await services.stock.buy_stock(self, symbol=symbol, quantity=quantity)
+        await services.stock.market.buy_stock(self, symbol=symbol, quantity=quantity)
 
     async def sell_stock(self, symbol: str, quantity: int):
-        await services.stock.sell_stock(self, symbol=symbol, quantity=quantity)
+        await services.stock.market.sell_stock(self, symbol=symbol, quantity=quantity)

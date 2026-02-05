@@ -1,40 +1,49 @@
 from time import time
 import yfinance as yf
+from backend.models import user
 from backend.models.cache import *
+from backend.models.stock import MarketStock, MarketStock, SandboxMarket, StockData, StockMarket
 from backend.models.user import User, UserSession
 
 
 class StockService:
     def __init__(self):
-        self._cache = Cache()
+        self.market = StockMarket()
+        self.sandbox_markets: dict[int, SandboxMarket] = {}
+
+    def get_sandbox(self, session: UserSession):
+        if session.user.user_id not in self.sandbox_markets:
+            self.sandbox_markets[session.user.user_id] = SandboxMarket()
+        return self.sandbox_markets[session.user.user_id]
 
     async def get_stock_info(self, symbol):
-        if self._cache.has(symbol):
-            return self._cache.get(symbol)
+        if symbol in self.market.stocks:
+            stock = self.market.get_stock(symbol)
+            return stock.get_data()
 
         stock = yf.Ticker(symbol)
         hist = stock.history(period="5d")
         stock_history = hist.reset_index()
         print("Stock history retrieved:", symbol)
-        data = {
-            "symbol": symbol,
-            "buy_price": hist['Close'].iloc[-1],
-            "sell_price": hist['Close'].iloc[-1] * 0.95,
-            "name": stock.info['shortName'],
-            "dates": stock_history['Date'].dt.strftime('%Y-%m-%d').tolist(),
-            "prices": stock_history['Close'].tolist(),
-        }
+        data: StockData = StockData(
+            symbol=symbol,
+            buy_price=hist['Close'].iloc[-1],
+            sell_price=hist['Close'].iloc[-1] * 0.95,
+            name=stock.info['shortName'],
+            dates=stock_history['Date'].dt.strftime('%Y-%m-%d').tolist(),
+            prices=stock_history['Close'].tolist(),
+        )
 
-        self._cache.set(symbol, data, expiration=300)
+        self.market.add_stock(MarketStock(data))
         return data
 
     async def get_buy_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data["buy_price"]
+        return data.buy_price
     
     async def get_sell_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data["sell_price"]
+        return data.sell_price
 
     async def buy_stock(self, session: UserSession, symbol: str, quantity: int):
         buy_price = await self.get_buy_price(symbol)

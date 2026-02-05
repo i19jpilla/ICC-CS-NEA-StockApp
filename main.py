@@ -47,6 +47,10 @@ async def get_login_page():
 async def get_dashboard_page():
     return FileResponse("frontend/pages/dashboard/index.html")
 
+@app.get("/sandbox")
+async def get_sandbox_page():
+    return FileResponse("frontend/pages/sandbox/index.html")
+
 def start_server():
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

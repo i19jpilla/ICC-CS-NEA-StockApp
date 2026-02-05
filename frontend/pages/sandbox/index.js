@@ -19,13 +19,16 @@ btn.addEventListener('click', async () => {
         priceChart.destroy();
     }
 
+    const prices = data.history.map(entry => entry.price);
+    const dates = data.history.map(entry => new Date(entry.timestamp).toLocaleString());
+    console.log(prices, dates, data.history);
     priceChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.dates,
+            labels: dates,
             datasets: [{
                 label: 'Price History',
-                data: data.prices,
+                data: prices,
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 2,
                 fill: false
@@ -144,9 +147,4 @@ sellButton.addEventListener('click', async () => {
     } else {
         alert(`Failed to sell stock: ${data.detail}`);
     }
-});
-
-const sandboxButton = document.getElementById('sandbox');
-sandboxButton.addEventListener('click', async () => {
-    await fetch('/sandbox');
 });
