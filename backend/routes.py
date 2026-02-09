@@ -62,16 +62,31 @@ def setup_routes(app):
         else:
             return {"status": "failure", "message": "Invalid session token"}
         
-    @app.get("/api/stocks/sandbox")
-    async def get_sandbox_stocks(data: dict):
-        session = services.auth.get_session(data["token"])
-        if session:
-            market = services.stock.get_sandbox(session)
-            stock = market.get_stock(data["symbol"])
-            if stock:
-                data = stock.get_data()
-                return {"status": "success", "stock": data}
-            else:
-                return {"status": "failure", "message": "Stock not found in sandbox market."}
-        else:
+    @app.get("/api/sandbox")
+    async def get_sandbox_stocks(symbol: str, token: str):
+        session = services.auth.get_session(token)
+        if not session:
             return {"status": "failure", "message": "Invalid session token"}
+        
+        sandbox = services.stock.get_sandbox(session)
+        stocks = sandbox.get_stock_data(symbol)
+        print(stocks, symbol, token)
+        if stocks:
+            return {"status": "success", "data": dict(stocks)}
+        else:
+            return {"status": "failure", "message": "Stock not found in sandbox"}
+        
+    @app.get("/api/sandbox/refresh")  
+    async def refresh_sandbox(symbol: str, token: str):
+        session = services.auth.get_session(token)
+        if not session:
+            return {"status": "failure", "message": "Invalid session token"}
+        
+        sandbox = services.stock.get_sandbox(session)
+        sandbox.step()
+
+        stock_data = sandbox.get_stock_data(symbol)
+        if stock_data:
+            return {"status": "success", "data": stock_data}
+        else:
+            return {"status": "failure", "message": "Stock not found in sandbox"}

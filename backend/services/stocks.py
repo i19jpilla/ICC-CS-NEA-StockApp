@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from time import time
 import yfinance as yf
 from backend.models import user
@@ -35,7 +36,7 @@ class StockService:
         )
 
         self.market.add_stock(MarketStock(data))
-        return data
+        return asdict(data)
 
     async def get_buy_price(self, symbol):
         data = await self.get_stock_info(symbol)

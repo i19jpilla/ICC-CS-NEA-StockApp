@@ -1,7 +1,6 @@
 import asyncio
-from dataclasses import dataclass
-from datetime import time
-import datetime
+from dataclasses import dataclass, asdict
+from datetime import datetime
 
 from backend.models.user import UserSession
 
@@ -43,13 +42,22 @@ class MarketStock:
     def get_price(self) -> float:
         return self.current_price or self._data.buy_price
     
-    def get_data(self) -> StockData:
+    def get_data(self) -> dict:
         # Return a copy of the original StockData with updated current_price
-        updated_data = self._data
-        updated_data.buy_price = self.current_price
-        updated_data.sell_price = self.current_price  # Assuming sell price is same as buy price for simplicity
-        updated_data.prices = self.history[-len(self._data.prices):]  # Keep the same number of historical prices
-        return updated_data
+        history = {}
+        for entry in self.history:
+            #convert timestamp to string for JSON serialization
+            timestamp = entry["timestamp"].strftime('%Y-%m-%d %H:%M:%S') if isinstance(entry["timestamp"], datetime) else entry["timestamp"]
+            history[timestamp] = entry["price"]
+
+        data = {
+            "buy_price": self.current_price,
+            "sell_price": self.current_price,  # Assuming sell price is same as buy price
+            "history": history,
+            "name": self._data.name,
+            "symbol": self._data.symbol,
+        }
+        return data
 
 class StockMarket:
     def __init__(self):
@@ -61,7 +69,7 @@ class StockMarket:
     def get_stock(self, symbol: str) -> MarketStock | None:
         return self.stocks.get(symbol)
     
-    def get_stock_data(self, symbol: str) -> StockData | None:
+    def get_stock_data(self, symbol: str) -> dict | None:
         stock = self.get_stock(symbol)
         return stock.get_data() if stock else None
     
@@ -114,7 +122,7 @@ class SandboxMarket(StockMarket):
             buy_price=150.0,
             sell_price=145.0,
             dates=[],
-            prices=[150.0]
+            prices=[]
         )))
 
         self.add_stock(MarketStock(StockData(
@@ -123,8 +131,11 @@ class SandboxMarket(StockMarket):
             buy_price=2800.0,
             sell_price=2750.0,
             dates=[],
-            prices=[2800.0]
+            prices=[]
         )))
+
+        for i in range(10):
+            self.step()  # Simulate some initial price changes to populate history
 
     def _simulate_market(self):
         while True:
@@ -149,7 +160,7 @@ class SandboxMarket(StockMarket):
     def stop(self):
         self.main_loop.cancel()
 
-    def get_market_stocks(self) -> dict[str, StockData]:
+    def get_market_stocks(self) -> dict[str, dict]:
         stock_data = {}
         for symbol, stock in self.stocks.items():
             stock_data[symbol] = stock.get_data()

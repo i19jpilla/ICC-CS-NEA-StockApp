@@ -104,8 +104,8 @@ class UserSession:
 
     async def _save(self):
         print("Saving profile for user:", self.user.username)
-        self.profile.save(self.user)
-        self.portfolio.save(self.user)
+        await self.profile.save(self.user)
+        await self.portfolio.save(self.user)
 
     async def _load_profile(self):
         if not self.user: return None

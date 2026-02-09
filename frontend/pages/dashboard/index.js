@@ -148,5 +148,5 @@ sellButton.addEventListener('click', async () => {
 
 const sandboxButton = document.getElementById('sandbox');
 sandboxButton.addEventListener('click', async () => {
-    await fetch('/sandbox');
+    window.location.href = '/sandbox';
 });
