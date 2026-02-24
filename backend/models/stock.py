@@ -1,8 +1,10 @@
 import asyncio
 from dataclasses import dataclass, asdict
 from datetime import datetime
+import time
 
 from backend.models.user import UserSession
+from backend import services
 
 @dataclass
 class StockData:
@@ -31,11 +33,14 @@ class MarketStock:
             })
         return history
 
-    def update_price(self, new_price: float):
+    def update_price(self, new_price: float, timestamp: int = None):
         self.current_price = new_price
-        timestamp = datetime.now()
+        if not timestamp:
+            timestamp = int(time.time())
+
+        date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
         self.history.append({
-            "timestamp": timestamp,
+            "timestamp": date,
             "price": new_price
         })
 
@@ -115,12 +120,15 @@ class StockMarket:
 class SandboxMarket(StockMarket):
     def __init__(self):
         super().__init__()
+        self.market_id = f"sandbox_{int(time.time())}"
+        self.tracked_stocks: set[str] = set()
+
         # Initialize with some simulated stocks
         self.add_stock(MarketStock(StockData(
             symbol="AAPL",
             name="Apple Inc.",
-            buy_price=150.0,
-            sell_price=145.0,
+            buy_price=600.0,
+            sell_price=575.0,
             dates=[],
             prices=[]
         )))
@@ -128,34 +136,67 @@ class SandboxMarket(StockMarket):
         self.add_stock(MarketStock(StockData(
             symbol="GOOG",
             name="Alphabet Inc.",
-            buy_price=2800.0,
-            sell_price=2750.0,
+            buy_price=800.0,
+            sell_price=750.0,
             dates=[],
             prices=[]
         )))
 
-        for i in range(10):
-            self.step()  # Simulate some initial price changes to populate history
+        self.add_stock(MarketStock(StockData(
+            symbol="TSLA",
+            name="Tesla Inc.",
+            buy_price=500.0,
+            sell_price=450.0,
+            dates=[],
+            prices=[]
+        )))
 
-    def _simulate_market(self):
-        while True:
+        self.start_time = time.time()
+        self.steps = 0
+        self.TICK_INTERVAL = 60  # seconds
+
+        self.UPDATE_INTERVAL = 2  # seconds
+
+        for i in range(20):  # Simulate 20 initial steps to populate price history
             self.step()
-            asyncio.sleep(5)  # Simulate market updates every 5 seconds
+
+    def get_websocket_channel(self):
+        return f"sandbox:{self.market_id}"
+
+    async def _simulate_market(self):
+        channel = self.get_websocket_channel()
+        while True:
+            print("Simulating market update...")
+            self.step()
+            await services.websocket.broadcast(
+                channel=channel,
+                data={
+                    "type": "market_update",
+                    "data": self.get_market_stocks()
+                }
+            )
+            await asyncio.sleep(self.UPDATE_INTERVAL)  # Simulate market updates every 5 seconds
     
     def step(self):
+        self.steps += 1
+        now = self.start_time + (self.steps * self.TICK_INTERVAL)
+        print(f"Sandbox market step {self.steps} at time {now:.2f}s")
+
         # Simulate stock price changes
         for stock in self.stocks.values():
-            # Simple random walk for demonstration
             import random
-            change = random.uniform(-1, 1)
-            new_price = max(0, stock.get_price() + change)
-            stock.update_price(new_price)
+            # Simulate a price change of up to ±50%
+            VOLATILITY = 0.5 
+            price_change = stock.get_price() * random.uniform(-VOLATILITY, VOLATILITY) 
+            new_price = max(0, stock.get_price() + price_change) # Ensure price doesn't go negative
+            stock.update_price(new_price, now)
         
         print(self.stocks.items())
 
     def start(self):
         # Simulate market conditions (e.g., price changes, news events)
         self.main_loop = asyncio.create_task(self._simulate_market())
+        self.track_all_stocks()  # Track all stocks by default
 
     def stop(self):
         self.main_loop.cancel()
@@ -163,5 +204,16 @@ class SandboxMarket(StockMarket):
     def get_market_stocks(self) -> dict[str, dict]:
         stock_data = {}
         for symbol, stock in self.stocks.items():
-            stock_data[symbol] = stock.get_data()
+            if symbol in self.tracked_stocks:
+                stock_data[symbol] = stock.get_data()
         return stock_data
+    
+    def track_stock(self, symbol: str):
+        if symbol in self.stocks:
+            self.tracked_stocks.add(symbol)
+    
+    def untrack_stock(self, symbol: str):
+        self.tracked_stocks.discard(symbol)
+    
+    def track_all_stocks(self):
+        self.tracked_stocks = set(self.stocks.keys())

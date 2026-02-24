@@ -1,3 +1,8 @@
+let socket;
+
+let priceChart = null;
+let currentTicker = null;
+
 function updateStockInfo(data) {
     document.getElementById('name').innerText = `Name: ${data.name}`;
     document.getElementById('ticker').innerText = `Ticker: ${data.symbol}`;
@@ -5,28 +10,53 @@ function updateStockInfo(data) {
     document.getElementById('sellPrice').innerText = `Sell Price: $${data.sell_price.toFixed(2)}`;
 }
 
+function updateStats(data) {
+    const balance = data.new_balance !== undefined ? data.new_balance : 0;
+    const totalQuantity = data.total_quantity !== undefined ? data.total_quantity : 0;
+
+    document.getElementById('balance').innerText = `Balance: $${balance.toFixed(2)}`;
+    document.getElementById('totalQuantity').innerText = `Total Quantity: ${totalQuantity}`;
+}
+
+let stockColors = {};
 function updateGraph(data) {
     const ctx = document.getElementById('priceChart').getContext('2d');
     if (priceChart) {
         priceChart.destroy();
     }
     
-    const prices = data.history ? Object.values(data.history) : [];
-    const dates = data.history ? Object.keys(data.history) : [];
+    console.log("Update graph data", data, Object.keys(data));
+    
+    let dates = [];
+    let prices = [];
+    let allPrices = {};
+    for (const ticker in data) {
+        const tickerData = data[ticker];
+        if (dates.length === 0) {
+            dates = tickerData.history ? Object.keys(tickerData.history) : [];
+        }
+        
+        const prices = tickerData.history ? Object.values(tickerData.history) : [];
+        allPrices[ticker] = prices;
+
+        if (!stockColors[ticker]) {
+            stockColors[ticker] = `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
+        }
+    }
 
     console.log(prices, dates, data.history);
     priceChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: dates,
-            datasets: [{
-                label: 'Price History',
-                data: prices,
-                borderColor: 'rgba(75, 192, 192, 1)',
+            datasets: Object.keys(allPrices).map(ticker => ({
+                label: ticker,
+                data: allPrices[ticker],
+                borderColor: stockColors[ticker] || `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
                 borderWidth: 2,
                 fill: false
-            }]
-        }, 
+            })),
+        },
         options: {
             scales: {
                 x: {
@@ -40,25 +70,101 @@ function updateGraph(data) {
     });
 }
 
-const btn = document.getElementById('getStock')
-
-let priceChart = null;
-let currentTicker = null;
-btn.addEventListener('click', async () => {
-    const ticker = document.getElementById('tickerInput').value;
-    const response = await fetch(`/api/sandbox?symbol=${ticker}&token=${localStorage.getItem('token')}`);
-    
-    if (!response.ok) {
-        alert('Failed to fetch stock data.');
+async function connectWebSocket() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('You must be logged in to connect to the WebSocket.');
+        window.location.href = '/login';
         return;
     }
 
-    const json = await response.json();
-    const data = json.data;
+    socket = new WebSocket(`ws://localhost:8000/ws/sandbox?token=${token}`);
+    socket.onopen = () => {
+        console.log('WebSocket connection established');
+    };
 
-    currentTicker = data.symbol;
-    updateStockInfo(data);
-    updateGraph(data);
+    socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        console.log(payload.data, Object.keys(payload.data));
+        const data = payload.data;
+        switch (data.type) {
+            case 'market_update':
+                updateGraph(data.data);
+                break;
+            case 'transaction_update':
+                updateStats(data.data);
+                break;
+            case 'ticker_update':
+                currentTicker = data.data.symbol;
+                updateStockInfo(data.data);
+                break;
+            default:
+                console.warn('Unknown message type:', data.type);
+        }
+        console.log('Received WebSocket message:', payload);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket connection closed');
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await connectWebSocket();
+});
+
+window.addEventListener('beforeunload', () => {
+    if (socket) {
+        socket.close();
+    }
+});
+
+async function trackStock(ticker) {
+    socket.send(JSON.stringify({
+        type: 'track',
+        symbol: ticker
+    }));
+}
+
+function untrackStock(ticker) {
+    socket.send(JSON.stringify({
+        type: 'untrack',
+        symbol: ticker
+    }));
+}
+
+function trackAllStocks() {
+    socket.send(JSON.stringify({
+        type: 'all'
+    }));
+}
+
+const btn = document.getElementById('getStock')
+btn.addEventListener('click', async () => {
+    const ticker = document.getElementById('tickerInput').value;
+    if (!ticker) {
+        alert('Please enter a stock ticker.');
+        return;
+    }
+
+    trackStock(ticker);
+});
+
+const untrackBtn = document.getElementById('untrackStock');
+untrackBtn.addEventListener('click', async () => {
+    const ticker = document.getElementById('tickerInput').value;
+    if (ticker) {
+        untrackStock(ticker);
+    }
+});
+
+const showAllBtn = document.getElementById('showAll');
+showAllBtn.addEventListener('click', async () => {
+    trackAllStocks();
 });
 
 const addCashButton = document.getElementById('addCash');
@@ -84,7 +190,7 @@ addCashButton.addEventListener('click', async () => {
     const data = await response.json();
     if (response.ok) {
         alert(`Successfully added cash. New balance: $${data.new_balance.toFixed(2)}`);
-        document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
+        updateStats(data);
     } else {
         alert(`Failed to add cash: ${data.detail}`);
     }
@@ -105,7 +211,7 @@ buyButton.addEventListener('click', async () => {
         return;
     }
 
-    const response = await fetch('/api/stocks/buy', {
+    const response = await fetch('/api/sandbox/buy', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -120,8 +226,7 @@ buyButton.addEventListener('click', async () => {
     const data = await response.json();
     if (response.ok) {
         alert(`Successfully bought ${quantity} share(s) of ${currentTicker}`);
-        document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
-        document.getElementById('totalQuantity').innerText = `Total Quantity: ${quantity}`;
+        updateStats(data);
     } else {
         alert(`Failed to buy stock: ${data.detail}`);
     }
@@ -142,7 +247,7 @@ sellButton.addEventListener('click', async () => {
         return;
     }
 
-    const response = await fetch('/api/stocks/sell', {
+    const response = await fetch('/api/sandbox/sell', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -153,42 +258,13 @@ sellButton.addEventListener('click', async () => {
             token: token
         })
     });
+
     const data = await response.json();
     if (response.ok) {
         alert(`Successfully sold ${quantity} share(s) of ${currentTicker}`);
-        document.getElementById('balance').innerText = `Balance: $${data.new_balance.toFixed(2)}`;
-        document.getElementById('totalQuantity').innerText = `Total Quantity: ${quantity}`;
+        updateStats(data);
     } else {
         alert(`Failed to sell stock: ${data.detail}`);
     }
-});
-
-const refreshButton = document.getElementById('refresh');
-refreshButton.addEventListener('click', async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        alert('You must be logged in to refresh your portfolio.');
-        window.location.href = '/login';
-        return;
-    }
-
-    if (!currentTicker) {
-        alert('Please fetch a stock first.');
-        return;
-    }
-
-    const response = await fetch(`/api/sandbox/refresh?symbol=${currentTicker}&token=${token}`);
-    const ticker = document.getElementById('tickerInput').value;
-    
-    if (!response.ok) {
-        alert('Failed to fetch stock data.');
-        return;
-    }
-    
-    const json = await response.json();
-    const data = json.data;
-    currentTicker = data.symbol;
-    updateStockInfo(data);
-    updateGraph(data);
 });
 

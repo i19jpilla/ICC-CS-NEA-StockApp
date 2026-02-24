@@ -14,7 +14,9 @@ class StockService:
 
     def get_sandbox(self, session: UserSession):
         if session.user.user_id not in self.sandbox_markets:
-            self.sandbox_markets[session.user.user_id] = SandboxMarket()
+            market = SandboxMarket()
+            market.start()
+            self.sandbox_markets[session.user.user_id] = market
         return self.sandbox_markets[session.user.user_id]
 
     async def get_stock_info(self, symbol):
