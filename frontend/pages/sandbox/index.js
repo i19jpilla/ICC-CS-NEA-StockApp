@@ -1,3 +1,24 @@
+const topbar = document.getElementById('topbar');
+const portfolioBtn = topbar.querySelector('#portfolioBtn');
+const dashboardBtn = topbar.querySelector('#dashboardBtn');
+const sandboxBtn = topbar.querySelector('#sandboxBtn');
+
+portfolioBtn.addEventListener('click', () => {
+    window.location.href = '/portfolio';
+});
+
+dashboardBtn.addEventListener('click', () => {
+    window.location.href = '/dashboard';
+});
+
+sandboxBtn.addEventListener('click', () => {
+    window.location.href = '/sandbox';
+});
+
+
+
+
+
 let socket;
 
 let priceChart = null;

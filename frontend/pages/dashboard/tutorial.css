@@ -1,0 +1,32 @@
+#tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none; /* allow page interaction if needed */
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+}
+
+.tutorial-highlight {
+  position: absolute;
+  border: 3px solid #4da3ff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+}
+
+.tutorial-tooltip {
+  position: absolute;
+  max-width: 300px;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  pointer-events: auto; /* allow clicking */
+}
+
+.hidden {
+  display: none;
+}

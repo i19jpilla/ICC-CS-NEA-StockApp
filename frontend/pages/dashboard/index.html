@@ -3,9 +3,27 @@
   <head>
     <title>Hello from Electron renderer!</title>
     <link rel="stylesheet" type="text/css" href="/shared/styles.css">
+    <!--<link rel="stylesheet" href="./tutorial.css" type="text/css"> -->
+    <link rel="stylesheet" type="text/css" href="/shared/tutorial.css">
   </head>
 
   <body>
+    <div id="topbar">
+      <a>Topbar:</a>
+      <button id="portfolioBtn">Portfolio</button>
+      <button id="dashboardBtn">Dashboard</button>
+      <button id="sandboxBtn">Sandbox</button>
+    </div>
+
+    <div id="tutorial-overlay" class="hidden">
+      <div class="tutorial-backdrop"></div>
+      <div class="tutorial-highlight"></div>
+      <div class="tutorial-tooltip">
+        <p id="tutorial-text">Click the next button to begin the tutorial.</p>
+        <button id="next-step">Next</button>
+      </div>
+    </div>
+
     <div>
       <input type="text" id="tickerInput" placeholder="Enter Stock Ticker" />
       <button id="getStock">Enter</button>
@@ -28,6 +46,9 @@
     </div>
   </body>
 
+  <button id="start-tutorial">Start Tutorial</button>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/pages/dashboard/index.js"></script>
+  <script src="/pages/dashboard/index.js" type="module"></script>
+  <script src="/pages/dashboard/tutorial.js" type="module"></script>
 </html>
