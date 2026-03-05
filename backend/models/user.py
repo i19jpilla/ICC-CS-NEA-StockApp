@@ -71,6 +71,9 @@ class Portfolio:
             self.dirty = True
             return True
         return False
+
+    def get_holdings(self):
+        return self.holdings
     
     async def save(self, user: User):
         if not self.dirty: return # No changes to save
@@ -161,9 +164,7 @@ class UserSession:
             return balance
         
     def get_portfolio(self):
-        return self.profile.portfolio or {
-            "AAPL": 10
-        }
+        return self.portfolio.get_holdings()
 
     """
     async def get_portfolio(self):

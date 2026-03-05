@@ -85,10 +85,10 @@ def setup_routes(app: fastapi.FastAPI):
         
         sandbox = services.stock.get_sandbox(session)
         stocks = sandbox.get_market_stocks()
-        return {"status": "success", "data": stocks}
-        
+        return {"status": "success", "data": stocks}       
+
     @app.websocket("/ws/sandbox")
-    async def websocket_endpoint(websocket: fastapi.WebSocket):
+    async def sandbox_ws(websocket: fastapi.WebSocket):
         token = websocket.query_params.get("token")
         session = services.auth.get_session(token)
         if not session:
@@ -144,6 +144,71 @@ def setup_routes(app: fastapi.FastAPI):
         finally:
             if websocket and websocket.client_state == fastapi.websockets.WebSocketState.CONNECTED:
                 await services.websocket.disconnect(websocket, channel)
+
+    @app.websocket("ws/portfolio")
+    def portfolio_ws(ws):
+        token = websocket.query_params.get("token")
+        session = services.auth.get_session(token)
+        if not session:
+            await websocket.close(code=1008)
+            return
+        
+        sandbox = services.stock.get_sandbox(session)
+        channel = f"portfolio:{session.user_id}"
+        await services.websocket.connect(websocket, channel)
+
+        task = None
+        def track_portfolio():
+            while True:
+                print("Auto-refreshing portfolio...")
+                portfolio_data = session.portfolio.get_holdings()
+                await services.websocket.broadcast(
+                    channel,
+                    data={
+                        "type": "portfolio_update",
+                        
+                    }
+                )
+                asyncio.sleep(1)
+
+        try:
+            while True:
+                data = await websocket.receive_json()
+                print(f"Received request from client: {data}")
+                # Handles incoming messages from the client if needed, e.g. for subscribing to specific stock updates
+                action = data.get("type")
+                symbol = data.get("symbol")
+                
+                match action:
+                    case "ready":
+                        task = asyncio.create_task()
+                    
+                    case "untrack":
+                        if not symbol:
+                            await services.websocket.send_json({"error": "Symbol is required for untracking"}, websocket, channel)
+                            continue
+
+                        sandbox.untrack_stock(symbol)
+                        await services.websocket.send_json({
+                            "type": "ticker_untrack",
+                            "data": {"symbol": symbol}
+                        }, websocket, channel)
+
+                    case "all":
+                        sandbox.track_all_stocks()
+                        # Client cannot handle multiple ticker data objects yet
+
+        except fastapi.WebSocketDisconnect:
+            print("WebSocket disconnected")
+
+        finally:
+            if websocket and websocket.client_state == fastapi.websockets.WebSocketState.CONNECTED:
+                await services.websocket.disconnect(websocket, channel)
+
+
+
+        
+
 
 
         
