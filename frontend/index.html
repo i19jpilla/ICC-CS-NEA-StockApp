@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My App</title>
+
+    <!-- Local React + Babel (no npm, no CDN at runtime) -->
+    <script src="./libs/react.development.js"></script>
+    <script src="./libs/react-dom.development.js"></script>
+    <script src="./libs/babel.standalone.min.js"></script>
+
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+
+  <body>
+    <p>TEST</p>
+    <div id="root"></div>
+
+    <!-- Contexts -->
+    <script type="text/babel" src="./context/NavContext.jsx"></script>
+
+    <!-- Components -->
+    <script type="text/babel" src="./components/Button.jsx"></script>
+    <script type="text/babel" src="./components/Card.jsx"></script>
+    <script type="text/babel" src="./components/Sidebar.jsx"></script>
+    <script type="text/babel" src="./components/TopBar.jsx"></script>
+
+    <!-- Pages -->
+    <script type="text/babel" src="./pages/LoginPage.jsx"></script>
+    <script type="text/babel" src="./pages/DashboardPage.jsx"></script>
+
+    <!-- App entry point (last) -->
+    <script type="text/babel" src="./App.jsx"></script>
+  </body>
+</html>
