@@ -1,12 +1,8 @@
-import { useState } from "react";
-import { InputField, SubmitButton, ErrorAlert } from "./AuthComponents";
-import "./auth.css";
-
-export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+function LoginPage() {
+  const [username, setUsername] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
 
   const { currentPage, setCurrentPage } = useNav();
 

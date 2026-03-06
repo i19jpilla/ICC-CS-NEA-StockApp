@@ -12,26 +12,33 @@ function AppContainer() {
 
   console.log("current page", currentPage)
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case "dashboard":     return <DashboardPage />;
-      case "login":    return <LoginPage />
-      default:         return <DashboardPage />;
-    }
-  };
+  const hideSidebar = ["login", "register"].includes(currentPage)
+  const pages = {
+    dashboard: <DashboardPage />,
+    login: <LoginPage />,
+    //register: <RegisterPage />,
+    //sandbox: <SandboxPage />,
+    //portfolio: <PortfolioPage />
+  }
 
-  return (
-    <div className="app-container">
-      <p>test</p>
-      <TopBar />
-      <div className="app-body">
-        <Sidebar />
-        <main className="app-content">
-          {renderPage()}
+  if (hideSidebar) {
+    return pages[currentPage]
+  } else {
+    return (
+      <div style={{ display: "flex", height: "100vh" }}>
+        <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        <main style={{
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          justifyContent: "center",  // centers page content horizontally
+          padding: "32px",
+        }}>
+          {pages[currentPage]}
         </main>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 function App() {
@@ -41,7 +48,6 @@ function App() {
 
   return (
     <NavProvider>
-      <p>TEST123</p>
       <AppContainer />
     </NavProvider>
   )
