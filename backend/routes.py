@@ -1,3 +1,5 @@
+import asyncio
+
 import fastapi
 from fastapi.responses import HTMLResponse, RedirectResponse
 from backend import services
@@ -145,20 +147,22 @@ def setup_routes(app: fastapi.FastAPI):
             if websocket and websocket.client_state == fastapi.websockets.WebSocketState.CONNECTED:
                 await services.websocket.disconnect(websocket, channel)
 
-    @app.websocket("ws/portfolio")
-    def portfolio_ws(ws):
-        token = websocket.query_params.get("token")
+    @app.websocket("/ws/portfolio")
+    async def portfolio_ws(ws: fastapi.WebSocket):
+        token = ws.query_params.get("token")
         session = services.auth.get_session(token)
+
+        print("connecting portfolio", token, session)
         if not session:
-            await websocket.close(code=1008)
+            await ws.close(code=1008)
             return
         
         sandbox = services.stock.get_sandbox(session)
-        channel = f"portfolio:{session.user_id}"
-        await services.websocket.connect(websocket, channel)
+        channel = f"portfolio:{session.user.user_id}"
+        await services.websocket.connect(ws, channel)
 
         task = None
-        def track_portfolio():
+        async def track_portfolio():
             while True:
                 print("Auto-refreshing portfolio...")
                 portfolio_data = session.portfolio.get_holdings()
@@ -166,14 +170,31 @@ def setup_routes(app: fastapi.FastAPI):
                     channel,
                     data={
                         "type": "portfolio_update",
-                        
+                        "data": portfolio_data
                     }
                 )
-                asyncio.sleep(1)
+
+                price_data = {}
+                for ticker in portfolio_data:
+                    price = services.stock.get_buy_price(ticker)
+                    price_data[ticker] = price or 0
+
+                await services.websocket.broadcast(
+                    channel,
+                    data={
+                        "type": "price_update",
+                        "data": price_data
+                    }
+                )
+                
+                await asyncio.sleep(1)
+
+        print("create portfolio task")
+        task = asyncio.create_task(track_portfolio())
 
         try:
             while True:
-                data = await websocket.receive_json()
+                data = await ws.receive_json()
                 print(f"Received request from client: {data}")
                 # Handles incoming messages from the client if needed, e.g. for subscribing to specific stock updates
                 action = data.get("type")
@@ -181,19 +202,8 @@ def setup_routes(app: fastapi.FastAPI):
                 
                 match action:
                     case "ready":
-                        task = asyncio.create_task()
-                    
-                    case "untrack":
-                        if not symbol:
-                            await services.websocket.send_json({"error": "Symbol is required for untracking"}, websocket, channel)
-                            continue
-
-                        sandbox.untrack_stock(symbol)
-                        await services.websocket.send_json({
-                            "type": "ticker_untrack",
-                            "data": {"symbol": symbol}
-                        }, websocket, channel)
-
+                        pass
+                        
                     case "all":
                         sandbox.track_all_stocks()
                         # Client cannot handle multiple ticker data objects yet
@@ -202,8 +212,9 @@ def setup_routes(app: fastapi.FastAPI):
             print("WebSocket disconnected")
 
         finally:
-            if websocket and websocket.client_state == fastapi.websockets.WebSocketState.CONNECTED:
-                await services.websocket.disconnect(websocket, channel)
+            if ws and ws.client_state == fastapi.websockets.WebSocketState.CONNECTED:
+                await services.websocket.disconnect(ws, channel)
+                if task: task.cancel()
 
 
 

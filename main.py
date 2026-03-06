@@ -51,6 +51,10 @@ async def get_dashboard_page():
 async def get_sandbox_page():
     return FileResponse("frontend/pages/sandbox/index.html")
 
+@app.get("/portfolio")
+async def get_portfolio_page():
+    return FileResponse("frontend/pages/portfolio/index.html")
+
 def start_server():
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

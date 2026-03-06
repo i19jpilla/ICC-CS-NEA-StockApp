@@ -42,11 +42,11 @@ class StockService:
 
     async def get_buy_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data.buy_price
+        return data["buy_price"]
     
     async def get_sell_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data.sell_price
+        return data["sell_price"]
 
     async def buy_stock(self, session: UserSession, symbol: str, quantity: int):
         buy_price = await self.get_buy_price(symbol)

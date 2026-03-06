@@ -150,3 +150,8 @@ const sandboxButton = document.getElementById('sandbox');
 sandboxButton.addEventListener('click', async () => {
     window.location.href = '/sandbox';
 });
+
+const portfolioButton = document.getElementById('portfolioBtn');
+portfolioButton.addEventListener('click', async () => {
+    window.location.href = '/portfolio';
+});

@@ -1,3 +1,9 @@
+const dashboardBtn = document.getElementById("dashboardBtn")
+dashboardBtn.addEventListener("click", (ev) => {
+    window.location.href = "/dashboard"
+})
+
+
 let socket;
 
 let priceChart = null;

@@ -65,8 +65,7 @@ async function connectWebSocket() {
     socket.onmessage = (event) => {
         const payload = JSON.parse(event.data);
         console.log(payload.data, Object.keys(payload.data));
-        const data = payload.data;
-        handlePayload(data)
+        handlePayload(payload.data)
     };
 
     socket.onclose = () => {
