@@ -9,17 +9,25 @@ let pieChart = null
 let pieChartData = {}
 let pricesData = {}
 let colors = {}
+
+let currPriceShareData = {}
 function updatePieChart() {
     console.log(pieChartData, pricesData)
     let totalPrice = 0
-    let priceShareData = {}
+    let hasChanged = false
     for (const [ticker, holdings] of Object.entries(pieChartData)) {
         const tickerPrice = pricesData[ticker] * (isNaN(holdings) ? 0 : holdings)
         totalPrice += tickerPrice
-        priceShareData[ticker] = tickerPrice
+        if (currPriceShareData[ticker] !== tickerPrice) {
+            hasChanged = true
+            currPriceShareData[ticker] = tickerPrice
+        }
     }
 
-    if (pieChart) { pieChart.destroy() }
+    // prevents re-rendering of chart
+    console.log(hasChanged)
+    if (!hasChanged) return
+    if (pieChart) pieChart.destroy()
 
     function getRandomColor() {
         const r = Math.floor(Math.random() * 256)
@@ -32,10 +40,10 @@ function updatePieChart() {
     pieChart = new Chart(canvas, {
         type: "doughnut",
         data: {
-            labels: Object.keys(priceShareData),
+            labels: Object.keys(currPriceShareData),
             datasets: [{
-                data: Object.values(priceShareData),
-                backgroundColor: Object.keys(priceShareData).map(x => {
+                data: Object.values(currPriceShareData),
+                backgroundColor: Object.keys(currPriceShareData).map(x => {
                     let color = colors[x]
                     if (!color) {
                         color = getRandomColor()

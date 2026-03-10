@@ -188,7 +188,7 @@ def setup_routes(app: fastapi.FastAPI):
                     }
                 )
                 
-                await asyncio.sleep(1)
+                await asyncio.sleep(10)
 
         print("create portfolio task")
         task = asyncio.create_task(track_portfolio())
