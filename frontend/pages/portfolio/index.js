@@ -8,8 +8,9 @@ const canvas = document.getElementById("pieChart")
 let pieChart = null
 let pieChartData = {}
 let pricesData = {}
+let colors = {}
 function updatePieChart() {
-    console.log(data)
+    console.log(pieChartData, pricesData)
     let totalPrice = 0
     let priceShareData = {}
     for (const [ticker, holdings] of Object.entries(pieChartData)) {
@@ -28,7 +29,6 @@ function updatePieChart() {
         return `rgb(${r},${g},${b})`
     }
 
-    let colors = {}
     pieChart = new Chart(canvas, {
         type: "doughnut",
         data: {

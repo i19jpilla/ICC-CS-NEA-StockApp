@@ -176,8 +176,9 @@ def setup_routes(app: fastapi.FastAPI):
 
                 price_data = {}
                 for ticker in portfolio_data:
-                    price = services.stock.get_buy_price(ticker)
+                    price = await services.stock.get_buy_price(ticker)
                     price_data[ticker] = price or 0
+                    print(ticker, price)
 
                 await services.websocket.broadcast(
                     channel,

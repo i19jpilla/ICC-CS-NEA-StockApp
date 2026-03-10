@@ -60,7 +60,7 @@ addCashButton.addEventListener('click', async () => {
         },
         body: JSON.stringify({
             token: token,
-            amount: 100
+            amount: 10000
         })
     });
 
@@ -80,7 +80,9 @@ buyButton.addEventListener('click', async () => {
         return;
     }
 
-    const quantity = 1; // For simplicity, buying 1 share
+    const quantityInput = document.getElementById("quantityInput")
+    let quantity = quantityInput.value ? parseInt(quantityInput.value) : 1
+
     const token = localStorage.getItem('token');
     if (!token) {
         alert('You must be logged in to buy stocks.');

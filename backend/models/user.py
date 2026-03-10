@@ -51,6 +51,12 @@ class Portfolio:
         if portfolio_data:
             self.holdings = self._convert_to_dict(portfolio_data)
 
+        self.holdings = {
+            "AAPL": 10,
+            "TSLA": 10,
+            "GOOG": 10
+        }
+
         self.dirty = False
 
     def _convert_to_dict(self, portfolio_data):
