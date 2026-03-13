@@ -50,6 +50,17 @@ class Database:
         )
         """)
 
+        """Create tutorial progress"""
+        await self.connection.execute("""
+        CREATE TABLE IF NOT EXISTS tutorials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tutorial_id TEXT NOT NULL,
+            stage INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        """)
+
         await self.connection.commit()
         
 db = Database()

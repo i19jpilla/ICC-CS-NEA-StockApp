@@ -84,6 +84,61 @@ class Portfolio:
         await db.connection.commit()
         self.dirty = False
 
+class Tutorials:
+    def __init__(self, user_id, tutorial_data=None):
+        self.user_id = user_id
+        self.tutorials: dict[str, int] = {}
+        if tutorial_data:
+            self.tutorials = self._convert_to_dict(portfolio_data)
+
+        self.dirty = False
+
+    def _convert_to_dict(self, portfolio_data):
+        holdings = {}
+        for item in portfolio_data:
+            holdings[item["tutorial_id"]] = {
+                "completed": item["completed"],
+                "stage": item["stage"]
+            }
+        return holdings
+
+    def get_tutorial_data(self, tutorial_id):
+        if tutorial_id in self.tutorials:
+            return self.tutorials[tutorial_id]
+    
+    def start_tutorial(self, tutorial_id):
+        if tutorial_id in self.tutorials:
+            tutorial_data = self.tutorials[tutorial_id]
+            if tutorial_data["completed"] == True:
+                print("already completed")
+                return
+            
+            return tutorial_data
+        
+        tutorial_data = {
+            "completed": False,
+            "stage": 1
+        }
+        self.tutorials[tutorial_id] = tutorial_data
+        self.dirty = True
+    
+    async def save(self, user: User):
+        if not self.dirty: return # No changes to save
+        print("Saving tutorial data to DB for user:", user.username)
+        cursor = await db.connection.cursor()
+        for tutorial_id, data in self.holdings.items():
+            await cursor.execute("""
+                UPDATE portfolios SET completed = ?
+                WHERE user_id = ? AND tutorial_id = ?
+            """, (data["completed"] or False, self.user_id, tutorial_id))
+
+            await cursor.execute("""
+                UPDATE portfolios SET stage = ?
+                WHERE user_id = ? AND tutorial_id = ?
+            """, (data["stage"] or 1, self.user_id, tutorial_id))
+        await db.connection.commit()
+        self.dirty = False
+
 class UserSession:
     def __init__(self, user: User):
         self.user = user
@@ -91,6 +146,7 @@ class UserSession:
     async def start(self):
         self.profile = await self._load_profile()
         self.portfolio = await self._load_portfolio()
+        self.tutorials = await self._load_tutorials()
         self.save_loop = asyncio.create_task(self._save_loop())
 
     async def stop(self):
@@ -106,6 +162,7 @@ class UserSession:
         print("Saving profile for user:", self.user.username)
         await self.profile.save(self.user)
         await self.portfolio.save(self.user)
+        await self.tutorials.save(self.user)
 
     async def _load_profile(self):
         if not self.user: return None
@@ -144,6 +201,20 @@ class UserSession:
             portfolio_data=results
         )
         return portfolio
+
+    async def _load_tutorials(self):
+        if not self.user: return None
+        cursor = await db.connection.cursor()
+        user_id = int(self.user.user_id)
+        await cursor.execute("SELECT * FROM tutorials WHERE user_id = ?", (user_id,))
+        results = await cursor.fetchall()
+        print("Tutorials loaded", results)
+
+        tutorials = Tutorials(
+            user_id = self.user.user_id,
+            tutorial_data = results
+        )
+        return tutorials
 
     def get_balance(self):
         return self.profile.balance or 0
