@@ -181,7 +181,11 @@ class UserSession:
     """
     
     async def buy_stock(self, symbol: str, quantity: int):
-        await services.stock.market.buy_stock(self, symbol=symbol, quantity=quantity)
+        success, res = await services.stock.buy_stock(self, symbol=symbol, quantity=quantity)
+        print(success, res)
+        return success, res
 
     async def sell_stock(self, symbol: str, quantity: int):
-        await services.stock.market.sell_stock(self, symbol=symbol, quantity=quantity)
+        success, res = await services.stock.sell_stock(self, symbol=symbol, quantity=quantity)
+        print(success, res)
+        return success, res

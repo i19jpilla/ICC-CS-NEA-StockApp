@@ -37,24 +37,34 @@ class StockService:
             prices=stock_history['Close'].tolist(),
         )
 
-        self.market.add_stock(MarketStock(data))
-        return asdict(data)
+        stock = MarketStock(data)
+        self.market.add_stock(stock)
+
+        return stock.get_data()
 
     async def get_buy_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data.buy_price
+        print(data)
+        return data.get("buy_price")
     
     async def get_sell_price(self, symbol):
         data = await self.get_stock_info(symbol)
-        return data.sell_price
+        print(data)
+        return data.get("sell_price")
 
     async def buy_stock(self, session: UserSession, symbol: str, quantity: int):
         buy_price = await self.get_buy_price(symbol)
+        if not buy_price:
+            print("Failed to buy this stock.")
+            return False, "Failed to buy this stock."
+
         total_cost = buy_price * quantity
 
         user_balance = session.profile.balance
         if user_balance < total_cost:
-            raise Exception("Insufficient funds to complete purchase.")
+            print("Insufficient funds to complete purchase.")
+            return False, "Insufficient funds to complete purchase."
+
         session.update_balance(lambda balance: balance - total_cost)
 
         session.portfolio.add_stock(symbol, quantity)
@@ -62,14 +72,19 @@ class StockService:
 
         # Here you would add logic to deduct funds from the user's account
         print(f"User {session.user.username} bought {quantity} shares of ${symbol} at {buy_price} each for a total of {total_cost}.")
-        return {
+        return True, {
             "total_stock": curr_quantity,
             "balance": user_balance
         }
 
     async def sell_stock(self, session: UserSession, symbol: str, quantity: int):
         sell_price = await self.get_sell_price(symbol)
+        if not sell_price:
+            print("Failed to sell stock.")
+            return False, "Failed to sell this stock."
+        
         total_revenue = sell_price * quantity
+
         # Here you would add logic to add funds to the user's account
         session.update_balance(lambda balance: balance + total_revenue)
         session.portfolio.remove_stock(symbol, quantity)
@@ -77,7 +92,7 @@ class StockService:
         
         user_balance = session.get_balance()
         print(f"User {session.user.username} sold {quantity} shares of ${symbol} at {sell_price} each for a total of {total_revenue}.")
-        return {
+        return True, {
             "total_stock": curr_quantity,
             "balance": user_balance
         }

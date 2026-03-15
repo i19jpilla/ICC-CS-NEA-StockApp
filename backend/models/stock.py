@@ -57,7 +57,7 @@ class MarketStock:
 
         data = {
             "buy_price": self.current_price,
-            "sell_price": self.current_price,  # Assuming sell price is same as buy price
+            "sell_price": self.current_price * 0.95,
             "history": history,
             "name": self._data.name,
             "symbol": self._data.symbol,
@@ -110,11 +110,12 @@ class StockMarket:
             "balance": user_balance
         }
     
-    def sell_stock(self, user: UserSession, symbol: str, quantity: int) -> float:
+    async def sell_stock(self, user: UserSession, symbol: str, quantity: int) -> float:
         stock = self.get_stock(symbol)
         if not stock:
-            raise Exception("Stock not found in market.")
-        total_revenue = stock.price * quantity
+            print("Stock not found in market.")
+            return
+        total_revenue = stock.get_price() * quantity
         return total_revenue
 
 class SandboxMarket(StockMarket):
@@ -201,6 +202,7 @@ class SandboxMarket(StockMarket):
     def stop(self):
         self.main_loop.cancel()
 
+    # Handles the tracking / untracking of stocks in the sandbox (cannot add for the regular one, as it is global)
     def get_market_stocks(self) -> dict[str, dict]:
         stock_data = {}
         for symbol, stock in self.stocks.items():

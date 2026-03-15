@@ -16,8 +16,8 @@ function AppContainer() {
   const pages = {
     dashboard: <DashboardPage />,
     login: <LoginPage />,
-    //register: <RegisterPage />,
-    //sandbox: <SandboxPage />,
+    sandbox: <SandboxPage />,
+    register: <RegisterPage />,
     //portfolio: <PortfolioPage />
   }
 
@@ -31,7 +31,7 @@ function AppContainer() {
           flex: 1,
           overflowY: "auto",
           display: "flex",
-          justifyContent: "center",  // centers page content horizontally
+          //justifyContent: "center",  // centers page content horizontally
           padding: "32px",
         }}>
           {pages[currentPage]}

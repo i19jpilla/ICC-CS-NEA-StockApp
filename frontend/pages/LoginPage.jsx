@@ -65,7 +65,13 @@ function LoginPage() {
         </form>
         <p className="auth-footer-text">
           Don't have an account?{" "}
-          <a href="/pages/register" className="auth-link">Register here</a>
+          <span className="auth-link" onClick={() => setCurrentPage("register")} style={{
+              cursor: "pointer",
+              textDecoration: "underline",
+              color: "#0a4893"
+          }}>
+            Register here
+          </span>
         </p>
       </div>
     </div>
