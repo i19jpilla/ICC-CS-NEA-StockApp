@@ -8,7 +8,8 @@ from backend import services
 def setup_routes(app: fastapi.FastAPI):
     @app.get("/api/stocks")
     async def get_stock_data(symbol: str):
-        return await services.stock.get_stock_info(symbol)
+        stock_data = await services.stock.get_stock_info(symbol)
+        return stock_data
     
     @app.post("/api/auth/login")
     async def login_page(
@@ -39,7 +40,9 @@ def setup_routes(app: fastapi.FastAPI):
         if session:
             amount = data["amount"] or 100
             new_balance = session.update_balance(amount)
-            return {"status": "success", "message": "Cash added successfully", "new_balance": new_balance}
+            return {"status": "success", "message": "Cash added successfully", "data": {
+                "balance": new_balance
+            }}
         else:
             return {"status": "failure", "message": "Invalid session token"}
     
@@ -49,8 +52,11 @@ def setup_routes(app: fastapi.FastAPI):
     ):
         session = services.auth.get_session(data["token"])
         if session:
-            data = await session.buy_stock(data["symbol"], data["quantity"])
-            return {"status": "success", "message": "Stock purchased successfully", "data": data}
+            success, res = await session.buy_stock(data["symbol"], data["quantity"])
+            if success:
+                return {"status": "success", "message": "Stock purchased successfully", "data": res}
+            else:
+                return {"status": "error", "message": res}
         else:
             return {"status": "failure", "message": "Invalid session token"}
         
@@ -60,8 +66,11 @@ def setup_routes(app: fastapi.FastAPI):
     ):
         session = services.auth.get_session(data["token"])
         if session:
-            data = await session.sell_stock(data["symbol"], data["quantity"])
-            return {"status": "success", "message": "Stock sold successfully", "data": data}
+            success, res = await session.sell_stock(data["symbol"], data["quantity"])
+            if success:
+                return {"status": "success", "message": "Stock sold successfully", "data": res}
+            else:
+                return {"status": "error", "message": res}
         else:
             return {"status": "failure", "message": "Invalid session token"}
         
