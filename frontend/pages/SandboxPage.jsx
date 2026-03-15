@@ -3,7 +3,7 @@ function SandboxPage({ navigate }) {
   const [stockHistory, setStockHistory] = React.useState(null);
   const [stockInfo, setStockInfo] = React.useState(null);
   const [holdingsInfo, setHoldingsInfo] = React.useState(null);
-  const [visible, setVisible] = React.useState(false);
+  //const [visible, setVisible] = React.useState(false);
   const [status, setStatus] = React.useState(null);
 
   const socketRef = React.useRef(null);
@@ -13,12 +13,22 @@ function SandboxPage({ navigate }) {
     setStatus({ type, message: msg });
   }
 
-  const trackStock = (ticker) => {
-    socketRef.current?.send(JSON.stringify({ type: 'track', symbol: ticker }));
+  const tickerCheck = () => {
+    if (!currTicker) {
+      sendStatusMessage('Please enter a stock ticker.', 'error');
+      return false;
+    }
+    return true
   }
 
-  const untrackStock = (ticker) => {
-    socketRef.current?.send(JSON.stringify({ type: 'untrack', symbol: ticker }));
+  const trackStock = () => {
+    if (!tickerCheck()) return
+    socketRef.current?.send(JSON.stringify({ type: 'track', symbol: currTicker }));
+  }
+
+  const untrackStock = () => {
+    if (!tickerCheck()) return
+    socketRef.current?.send(JSON.stringify({ type: 'untrack', symbol: currTicker }));
   }
 
   const trackAllStocks = () => {
@@ -58,7 +68,7 @@ function SandboxPage({ navigate }) {
             buy_price: data.data.buy_price,
             sell_price: data.data.sell_price
           });
-          setVisible(true);
+          //setVisible(true);
           break;
         default:
           console.warn('Unknown message type:', data.type);
@@ -70,15 +80,6 @@ function SandboxPage({ navigate }) {
 
     return () => socket.close();
   }, []);
-
-  const handleSubmit = () => {
-    const ticker = document.getElementById('tickerInput').value;
-    if (!ticker) {
-      sendStatusMessage('Please enter a stock ticker.', 'error');
-      return;
-    }
-    socketRef.current?.send(JSON.stringify({ type: 'track', symbol: ticker }));
-  }
 
   const buyStock = async () => {
     if (!currTicker) {
@@ -141,14 +142,14 @@ function SandboxPage({ navigate }) {
           type="text"
           id="tickerInput"
           placeholder="Enter Stock Ticker"
+          onChange={e => setCurrTicker(e.target.value)}
         />
-        <button onClick={handleSubmit} id="track">Track</button>
-        <button id="untrack">Untrack</button>
-        <button id="trackAll">Track All</button>
-        <button id="untrackAll">Untrack All</button>
+        <button id="track" onClick={() => trackStock()}>Track</button>
+        <button id="untrack" onClick={() => untrackStock()}>Untrack</button>
+        <button id="trackAll" onClick={() => trackAllStocks()}>Track All</button>
       </div>
 
-      {visible ? (
+      {stockHistory !== null ? (
         <div id="stockInfo" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <StockInfo data={stockInfo} />
           <HoldingsInfo data={holdingsInfo} />
@@ -171,7 +172,7 @@ function SandboxPage({ navigate }) {
             />
           </div>
         </div>
-      ) : null}
+      ) : <p>Connecting...</p>}
     </div>
   );
 }

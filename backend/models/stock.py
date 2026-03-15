@@ -133,6 +133,7 @@ class SandboxMarket(StockMarket):
             dates=[],
             prices=[]
         )))
+        self.track_stock("APPL")
 
         self.add_stock(MarketStock(StockData(
             symbol="GOOG",
@@ -142,6 +143,7 @@ class SandboxMarket(StockMarket):
             dates=[],
             prices=[]
         )))
+        self.track_stock("GOOG")
 
         self.add_stock(MarketStock(StockData(
             symbol="TSLA",
@@ -151,6 +153,7 @@ class SandboxMarket(StockMarket):
             dates=[],
             prices=[]
         )))
+        self.track_stock("TSLA")
 
         self.start_time = time.time()
         self.steps = 0

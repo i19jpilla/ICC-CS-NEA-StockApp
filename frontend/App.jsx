@@ -18,7 +18,7 @@ function AppContainer() {
     login: <LoginPage />,
     sandbox: <SandboxPage />,
     register: <RegisterPage />,
-    //portfolio: <PortfolioPage />
+    portfolio: <PortfolioPage />
   }
 
   if (hideSidebar) {
